@@ -10,3 +10,7 @@ setups. The source repo is private; this repo hosts only release zips.
 Install: download the zip from a release, extract anywhere, run
 `WindowLayoutManager.exe`. The app self-updates from the feed at the
 download page, verifying size + sha256 before installing.
+
+## License
+
+Free for personal and commercial use. No resale, no modified redistributions. Full terms in [LICENSE.txt](LICENSE.txt).

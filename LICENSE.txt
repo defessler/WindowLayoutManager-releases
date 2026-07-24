@@ -1,0 +1,35 @@
+Window Layout Manager Freeware License
+Copyright (c) 2026 Doug Fessler. All rights reserved.
+
+Permission is granted, free of charge, to any person obtaining a copy
+of this software ("the Software") to:
+
+1. Use the Software for any purpose, personal or commercial, on any
+   number of machines.
+2. Copy and share the Software's unmodified official distribution,
+   free of charge, provided this license file stays included.
+
+The following are not permitted:
+
+1. Selling, renting, leasing, sublicensing, or otherwise charging any
+   fee for the Software or any part of it, whether on its own or
+   bundled with another product or service.
+2. Distributing modified versions of the Software.
+3. Removing or altering copyright, license, or attribution notices.
+4. Misrepresenting the origin of the Software or claiming it as your
+   own work.
+
+The Software remains the property of the copyright holder. This
+license grants use, not ownership. Your rights under this license end
+automatically if you violate its terms.
+
+The official distribution and updates are available at:
+https://dougfessler.com/projects/windowlayoutmanager/
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+OTHER DEALINGS IN THE SOFTWARE.
