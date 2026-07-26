@@ -1,0 +1,32 @@
+name: Feature request
+description: Suggest something Window Layout Manager should do
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describing the situation you're stuck in is more useful than
+        describing a solution — it leaves room for a better one.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: What's awkward or impossible today, and how often does it come up?
+      placeholder: >
+        Every time I dock my laptop I have to reload two profiles in a
+        specific order, because ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would help?
+      description: Optional. If you already have a shape in mind, describe it.
+
+  - type: input
+    id: app_version
+    attributes:
+      label: App version
+      placeholder: v1.1.0-dev.55

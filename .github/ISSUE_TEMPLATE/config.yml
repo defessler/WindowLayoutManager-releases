@@ -1,0 +1,7 @@
+# Free-form issues are off so reports arrive with the fields that make
+# them actionable. Maintainers can still open blank issues.
+blank_issues_enabled: false
+contact_links:
+  - name: Download, tutorial and release notes
+    url: https://dougfessler.com/projects/windowlayoutmanager/
+    about: Install instructions, the full feature walkthrough, and what changed in each release.

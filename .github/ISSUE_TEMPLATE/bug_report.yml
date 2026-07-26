@@ -1,0 +1,58 @@
+name: Bug report
+description: Something in Window Layout Manager does not work the way it should
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        If you opened this from inside the app, the version and diagnostics
+        below are already filled in. Paths have had your Windows username
+        replaced — everything here is public once you submit, so give the
+        rest a read before you post.
+
+  - type: textarea
+    id: what_happened
+    attributes:
+      label: What happened?
+      description: >
+        What you did, what the app did, and what you expected instead.
+        Concrete beats general: which windows, which monitors, what you
+        were doing at the time.
+      placeholder: |
+        1. Loaded the "Coding" profile
+        2. Unplugged the second monitor
+        3. Plugged it back in
+
+        Expected: windows go back where they were
+        Actually: both Chrome windows ended up on the primary monitor
+    validations:
+      required: true
+
+  - type: input
+    id: app_version
+    attributes:
+      label: App version
+      description: Settings → Updates shows this. Leave blank if you're not sure.
+      placeholder: v1.1.0-dev.55
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part?
+      description: Best guess is fine.
+      options:
+        - Not sure
+        - Saving or loading a layout
+        - Monitor changes / auto-activation
+        - Hold mode
+        - Virtual desktops
+        - The editor (list or visual)
+        - Updating the app
+        - Something else
+
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics
+      description: From Settings → Diagnostics in the app. Optional, but it usually saves a round trip.
+      render: text
