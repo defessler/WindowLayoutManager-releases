@@ -2,11 +2,13 @@
 #
 # Why it works this way: WindowLayoutManager is private and publishes here
 # with a deploy key, not a personal access token. A deploy key can push a
-# branch but can't create a release, so CI pushes incoming/<tag> holding the
-# zip (in parts of at most 90 MB, since GitHub rejects any pushed file over
+# branch but can't create a release, so CI pushes incoming/<tag>, one commit
+# on top of main (GitHub runs the workflow found in the pushed commit), adding
+# the zip in parts of at most 90 MiB (GitHub rejects any pushed file over
 # 100 MB), notes.md and release.json. This workflow checks the parts
 # reassemble into the zip release.json describes, creates the release with
-# this repo's own token, and deletes the branch.
+# this repo's own token, and deletes the branch. It never replaces an asset a
+# release already has, because the live update feed may point at it.
 #
 # The release tag targets main, never the handoff commit, so the zip doesn't
 # stay reachable in git history once the branch is gone. On a failure the
@@ -45,7 +47,7 @@ jobs:
           IFS=$'\t' read -r json_tag title prerelease zip sha size < <(python3 -I -c '
           import json
           r = json.load(open("release.json", encoding="utf-8"))
-          f = [r["tag"], r["title"], str(bool(r["prerelease"])).lower(), r["zipName"], r["sha256"].lower(), str(int(r["sizeBytes"]))]
+          f = [r["tag"], r["title"], "true" if r["prerelease"] is True else "false", r["zipName"], r["sha256"].lower(), str(int(r["sizeBytes"]))]
           if any("\t" in x or "\n" in x for x in f):
               raise SystemExit("release.json holds a tab or newline")
           print("\t".join(f))
@@ -65,6 +67,7 @@ jobs:
             echo "title=$title"
             echo "prerelease=$prerelease"
             echo "zip=$RUNNER_TEMP/$zip"
+            echo "sha=$sha"
           } >> "$GITHUB_OUTPUT"
       - name: Create or update the release
         shell: bash
@@ -74,11 +77,27 @@ jobs:
           TITLE: ${{ steps.check.outputs.title }}
           PRERELEASE: ${{ steps.check.outputs.prerelease }}
           ZIP: ${{ steps.check.outputs.zip }}
+          SHA: ${{ steps.check.outputs.sha }}
         run: |
           set -euo pipefail
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
-            # A re-run of the same tag: replace the asset so it matches the feed.
-            gh release upload "$TAG" "$ZIP" --repo "$GITHUB_REPOSITORY" --clobber
+            # A re-run of the same tag. The live feed may already point at this
+            # asset, so it is never replaced: the same file is left alone, and
+            # a different one fails the run for a person to sort out.
+            name="$(basename "$ZIP")"
+            have="$RUNNER_TEMP/existing"
+            mkdir -p "$have"
+            if gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "$name" --dir "$have" 2>/dev/null; then
+              got="$(sha256sum "$have/$name" | cut -d' ' -f1)"
+              if [ "$got" = "$SHA" ]; then
+                echo "Release $TAG already carries this $name, nothing to do."
+              else
+                echo "::error::Release $TAG already carries a different $name (sha256 $got, handoff $SHA). Not replacing it, because the live feed may point at it."
+                exit 1
+              fi
+            else
+              gh release upload "$TAG" "$ZIP" --repo "$GITHUB_REPOSITORY"
+            fi
           else
             args=(release create "$TAG" "$ZIP" --repo "$GITHUB_REPOSITORY" --title "$TITLE" --notes-file notes.md --target main)
             if [ "$PRERELEASE" = "true" ]; then args+=(--prerelease); fi
