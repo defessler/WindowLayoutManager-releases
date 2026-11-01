@@ -1,0 +1,92 @@
+# Creates a release from a handoff branch pushed by WindowLayoutManager's CI.
+#
+# Why it works this way: WindowLayoutManager is private and publishes here
+# with a deploy key, not a personal access token. A deploy key can push a
+# branch but can't create a release, so CI pushes incoming/<tag> holding the
+# zip (in parts of at most 90 MB, since GitHub rejects any pushed file over
+# 100 MB), notes.md and release.json. This workflow checks the parts
+# reassemble into the zip release.json describes, creates the release with
+# this repo's own token, and deletes the branch.
+#
+# The release tag targets main, never the handoff commit, so the zip doesn't
+# stay reachable in git history once the branch is gone. On a failure the
+# branch is kept for inspection.
+#
+# Only a push can trigger this. Nobody but the owner and the deploy key can
+# push here, and there's no pull_request trigger on purpose.
+
+name: Publish release
+
+on:
+  push:
+    branches: ['incoming/**']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-release-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Reassemble and check the zip
+        id: check
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME#incoming/}"
+          [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$ ]] || { echo "::error::'$tag' is not a release tag"; exit 1; }
+          IFS=$'\t' read -r json_tag title prerelease zip sha size < <(python3 -I -c '
+          import json
+          r = json.load(open("release.json", encoding="utf-8"))
+          f = [r["tag"], r["title"], str(bool(r["prerelease"])).lower(), r["zipName"], r["sha256"].lower(), str(int(r["sizeBytes"]))]
+          if any("\t" in x or "\n" in x for x in f):
+              raise SystemExit("release.json holds a tab or newline")
+          print("\t".join(f))
+          ')
+          [ "$json_tag" = "$tag" ] || { echo "::error::release.json is for $json_tag, the branch is for $tag"; exit 1; }
+          [[ "$zip" =~ ^[A-Za-z0-9._-]+\.zip$ ]] || { echo "::error::zipName '$zip' is not a plain .zip file name"; exit 1; }
+          [ -f notes.md ] || { echo "::error::notes.md is missing"; exit 1; }
+          compgen -G "$zip.part*" > /dev/null || { echo "::error::no $zip.part* files"; exit 1; }
+          cat "$zip".part* > "$RUNNER_TEMP/$zip"
+          got_sha="$(sha256sum "$RUNNER_TEMP/$zip" | cut -d' ' -f1)"
+          got_size="$(stat -c %s "$RUNNER_TEMP/$zip")"
+          [ "$got_sha" = "$sha" ] || { echo "::error::reassembled sha256 $got_sha is not $sha"; exit 1; }
+          [ "$got_size" = "$size" ] || { echo "::error::reassembled size $got_size is not $size"; exit 1; }
+          echo "Reassembled $zip: $got_size bytes, sha256 ok"
+          {
+            echo "tag=$tag"
+            echo "title=$title"
+            echo "prerelease=$prerelease"
+            echo "zip=$RUNNER_TEMP/$zip"
+          } >> "$GITHUB_OUTPUT"
+      - name: Create or update the release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.check.outputs.tag }}
+          TITLE: ${{ steps.check.outputs.title }}
+          PRERELEASE: ${{ steps.check.outputs.prerelease }}
+          ZIP: ${{ steps.check.outputs.zip }}
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            # A re-run of the same tag: replace the asset so it matches the feed.
+            gh release upload "$TAG" "$ZIP" --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            args=(release create "$TAG" "$ZIP" --repo "$GITHUB_REPOSITORY" --title "$TITLE" --notes-file notes.md --target main)
+            if [ "$PRERELEASE" = "true" ]; then args+=(--prerelease); fi
+            gh "${args[@]}"
+          fi
+      - name: Delete the handoff branch
+        if: success()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X DELETE "repos/$GITHUB_REPOSITORY/git/refs/heads/$GITHUB_REF_NAME"
